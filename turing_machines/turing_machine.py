@@ -3,8 +3,10 @@ import json
 import shutil
 from typing import Optional
 from collections import deque
+import imageio
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from matplotlib.patches import Rectangle, Arrow
 
 
@@ -63,6 +65,8 @@ class State:
     final = '□' 
     
     def __init__(self, state_str: Optional[str] = '0'):
+        if state_str == '' or state_str == ' ' or state_str == 'f':
+            state_str = State.final
         self.state = state_str
         
     def is_final(self) -> bool:
@@ -86,6 +90,8 @@ class TapeLetter:
     empty = '∅'
     
     def __init__(self, letter_str: Optional[str] = '∅'):
+        if letter_str == '' or letter_str == ' ' or letter_str == 'b':
+            letter_str = TapeLetter.empty
         self.letter = letter_str
     
     def is_empty(self) -> bool:
@@ -141,7 +147,11 @@ class TMProgram:
             cur_state = State(command[0])
             cur_tape_letter = TapeLetter(command[1])
             new_state = State(command[2])
+            if new_state.state == '-':
+                new_state = cur_state
             new_tape_letter = TapeLetter(command[3])
+            if new_tape_letter.letter == '-':
+                new_tape_letter = cur_tape_letter
             move = Move(command[4])
             self.program[(cur_state, cur_tape_letter)] = (new_state, new_tape_letter, move)
     
@@ -161,12 +171,16 @@ class TMProgram:
     
     def csv_loads(self, inp_str: str):
         lines = inp_str.split('\n')
-        for line in lines:
+        for line in lines[1:]:
             entries = line.split(',')
             cur_state = State(entries[0])
             cur_tape_letter = TapeLetter(entries[1])
             new_state = State(entries[2])
+            if new_state.state == '-':
+                new_state = cur_state
             new_tape_letter = TapeLetter(entries[3])
+            if new_tape_letter.letter == '-':
+                new_state = cur_state
             move = Move(entries[4])
             self.program[(cur_state, cur_tape_letter)] = (new_state, new_tape_letter, move)
     
@@ -189,11 +203,12 @@ class TM:
         self.state = init_state
         self.head = init_head
         self.time = init_time
+        self.time_limit = 1000
         
     def tape_str(self) -> list[str]:
         return [str(item) for item in self.tape]
     
-    def time_pp(self, verbose: bool = True, plot_dir: str = ''):
+    def time_pp(self, plot_dir: str = ''):
         new_state, new_letter, move = self.program[(self.state, self.tape[self.head])]
         letter_changed = self.tape[self.head] != new_letter
         self.tape[self.head] = new_letter
@@ -209,7 +224,7 @@ class TM:
         state_changed = self.state != new_state
         self.state = new_state
         self.time += 1        
-        if verbose:
+        if plot_dir:
             self.plot(letter_changed, state_changed, plot_dir, int(move))
             
     def plot(self, 
@@ -254,28 +269,53 @@ class TM:
             zeros_tab = '0' * (4 - len(str(self.time)))
             plt.savefig(f"{plot_dir}/{zeros_tab}{self.time}", dpi=300)
         plt.plot()
+        plt.close()
+
+    def animate_folder(self, folder_path: str, output_file: str, show_ani: bool=False, animation_speed: float=1.0):
+        image_files = sorted([f for f in os.listdir(folder_path) if f.endswith(('png'))])
+        images = [imageio.imread(os.path.join(folder_path, file)) for file in image_files]
+        fig, ax = plt.subplots()
+        ax.axis('off')
+        img_display = ax.imshow(images[0])
+        def update(frame):
+            img_display.set_array(images[frame])
+            return img_display,
+        if animation_speed < 0.1 or animation_speed > 10:
+            raise ValueError('animation speed should be in range (0.1, 10)')
+        frame_interval = 1000. / animation_speed
+        ani = animation.FuncAnimation(fig, update, frames=len(images), interval=frame_interval, blit=True)
+        ani.save(output_file, writer='imagemagick', savefig_kwargs={'pad_inches': 0})
+
+        if show_ani:
+            plt.show()
+            plt.close()
+        else:
+            plt.close()
         
-    def run(self, verbose: bool = True, plot_dir : str = ''):
+    def run(self, plot_dir : str = ''):
         if plot_dir:
-            if os.path.exists(plot_dir):
-                shutil.rmtree(plot_dir)
-            if not os.path.exists(plot_dir):
-                os.mkdir(plot_dir)
-        if verbose:
-            self.plot(plot_dir=plot_dir)
-        while not self.state.is_final():
-            self.time_pp(verbose, plot_dir)
+            os.makedirs(plot_dir, exist_ok=True)
+        while not self.state.is_final() or self.time > self.time_limit:
+            self.time_pp(plot_dir)
+
+    def animated_run(self, folder_path: str, show_ani: bool=False, 
+                     animation_speed: float=1.0, verbose: bool = True):
+        self.run(folder_path)
+        self.animate_folder(folder_path, f'{folder_path}/animation.gif', show_ani, animation_speed)
 
     def json_loads(self, input_str: str):
         data = json.loads(input_str)
         self.tape = deque(TapeLetter(letter) for letter in data['tape_string'])
         self.program = TMProgram()
-        self.program.csv_loads(data['program_csv'])
+        if 'program_csv' in data:
+            self.program.csv_loads(data['program_csv'])
+        elif 'program_csv_path' in data:
+            self.program.csv_load(data['program_csv_path'])
         self.state = State(data['state'])
         self.head = data['head']
         self.time = data['time']
 
-    def json_load(self, file_name: str):
+    def load_program_tape(self, file_name: str):
         with open(file_name, 'r') as f:
             self.json_loads(f.read())
 
@@ -295,5 +335,16 @@ class TM:
             
 if __name__ == '__main__':
     tm = TM()
-    tm.json_load('turing_machines/tm_unary_add.json')
-    tm.run(True, 'turing_machines/tm_unary_add')
+    programs_dir = './turing_machines/tm_programs'
+    img_dir = './turing_machines/img'
+
+    program_name = 'unary_add'
+    tm.load_program_tape(f'{programs_dir}/{program_name}.json')
+    output_dir = f'{img_dir}/{program_name}'
+    tm.animated_run(output_dir, show_ani=True, animation_speed=1.0, verbose=False)
+
+    # # more programs can be found here https://machinedeturing.com/ang_calculateur.php?page
+    # program_name = 'unary_mult_tape_prog'
+    # tm.load_program_tape(f'{programs_dir}/{program_name}.json')
+    # output_dir = f'{img_dir}/{program_name}'
+    # tm.animated_run(output_dir, show_ani=True, animation_speed=2.0, verbose=False)
