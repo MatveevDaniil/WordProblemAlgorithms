@@ -1,7 +1,7 @@
 {
-    "tape_string": "b111011b",
+    "tape_string": "b111b11b",
     "program_csv_path": "./turing_machines/tm_programs/unary_mult_program.csv",
     "state": "0",
-    "head": 1,
+    "head": 3,
     "time": 0
 }

@@ -123,6 +123,8 @@ class TMProgram:
             self.program[inp] = out
             
     def __getitem__(self, state_and_letter: tuple[State, TapeLetter]):
+        if state_and_letter not in self.program:
+            raise KeyError(f'command for state "{state_and_letter[0]}" and letter "{state_and_letter[1]}" not found')
         return self.program[state_and_letter]
     
     def __eq__(self, other):
@@ -180,7 +182,7 @@ class TMProgram:
                 new_state = cur_state
             new_tape_letter = TapeLetter(entries[3])
             if new_tape_letter.letter == '-':
-                new_state = cur_state
+                new_tape_letter = cur_tape_letter
             move = Move(entries[4])
             self.program[(cur_state, cur_tape_letter)] = (new_state, new_tape_letter, move)
     
@@ -338,13 +340,13 @@ if __name__ == '__main__':
     programs_dir = './turing_machines/tm_programs'
     img_dir = './turing_machines/img'
 
-    program_name = 'unary_add'
-    tm.load_program_tape(f'{programs_dir}/{program_name}.json')
-    output_dir = f'{img_dir}/{program_name}'
-    tm.animated_run(output_dir, show_ani=True, animation_speed=1.0, verbose=False)
-
-    # # more programs can be found here https://machinedeturing.com/ang_calculateur.php?page
-    # program_name = 'unary_mult_tape_prog'
+    # program_name = 'unary_add'
     # tm.load_program_tape(f'{programs_dir}/{program_name}.json')
     # output_dir = f'{img_dir}/{program_name}'
-    # tm.animated_run(output_dir, show_ani=True, animation_speed=2.0, verbose=False)
+    # tm.animated_run(output_dir, show_ani=True, animation_speed=1.0, verbose=False)
+
+    # more programs can be found here https://machinedeturing.com/ang_calculateur.php?page
+    program_name = 'unary_mult_tape_prog'
+    tm.load_program_tape(f'{programs_dir}/{program_name}.json')
+    output_dir = f'{img_dir}/{program_name}'
+    tm.animated_run(output_dir, show_ani=True, animation_speed=2.0, verbose=False)
