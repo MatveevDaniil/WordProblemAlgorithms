@@ -8,7 +8,8 @@ To better understand the rigorous mathematical definitions and theorems proven i
 
 A common question explored by mathematicians has surrounded the idea of normal forms, or the irreducible forms of mathematical objects. Since the same structure may appear in different ways, it is helpful to know when two objects are in some sense equivalent. 
 This question can appear in the form of determining if some function can be expressed as a polynomial equation (regular function). 
-It also appears in an exciting example we have seen in learning Galois theory was the constructibility of the 17-gon, 
+It also appears in an exciting example in Galois theory about the constructibility of the 17-gon: 
+
 $$ 16\cos\left(\frac{2\pi}{17}\right) = -1 + \sqrt{17} + \sqrt{34-2\sqrt{17}} + 2\sqrt{17 + 3\sqrt{17}-\sqrt{34-2\sqrt{17})}-2\sqrt{34+2\sqrt{17}}}.$$
 
 In group theory, this decision problem is frequently present when determining if two group elements given by words formed from a finite list of generators are the same. This is commonly referred to as "the word problem", and has been studied by algebraists from the 20th century on. In general, this is an example of an undecidable problem. However, extensive work has been done to uncover the structures necessary to allow us to answer this question. 
